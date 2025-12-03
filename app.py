@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 from datetime import datetime, timedelta
 import json
 import os
@@ -56,14 +56,9 @@ def calculate_calorie_goal(age, current_weight, goal_weight, weeks):
 
 @app.route('/')
 def index():
-    """Home page - show survey if no profile, else show dashboard"""
-    # Try to get profile from session first
-    profile = session.get('user_profile')
-
-    if profile:
-        return render_template('dashboard.html', profile=profile)
-
-    return render_template('survey.html')
+    """Home page - serve the static HTML fitness tracker"""
+    # Serve the index.html file which contains the full client-side app
+    return send_from_directory('.', 'index.html')
 
 
 @app.before_request

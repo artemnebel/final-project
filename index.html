@@ -426,7 +426,10 @@
                     scales: {
                         y: {
                             beginAtZero: false,
+                            suggestedMin: 100,
+                            suggestedMax: 250,
                             ticks: {
+                                stepSize: 10,
                                 callback: function(value) {
                                     return Math.round(value) + ' lbs';
                                 }

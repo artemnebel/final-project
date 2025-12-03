@@ -423,7 +423,16 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: false } }
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return Math.round(value) + ' lbs';
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }

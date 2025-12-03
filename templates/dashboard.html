@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Fitness Tracker - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-container">
+            <h1 class="logo">🏋️ Aurora Fitness Tracker</h1>
+            <button class="btn btn-secondary" onclick="resetProfile()">Reset Profile</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Profile Card -->
+        <div class="card profile-card">
+            <h2>Your Profile</h2>
+            <div class="profile-grid">
+                <div class="profile-item">
+                    <span class="profile-label">Age</span>
+                    <span class="profile-value">{{ profile.age }}</span>
+                </div>
+                <div class="profile-item">
+                    <span class="profile-label">Current Weight</span>
+                    <span class="profile-value">{{ "%.1f"|format(profile.current_weight) }} lbs</span>
+                </div>
+                <div class="profile-item">
+                    <span class="profile-label">Goal Weight</span>
+                    <span class="profile-value">{{ "%.1f"|format(profile.goal_weight) }} lbs</span>
+                </div>
+                <div class="profile-item">
+                    <span class="profile-label">Daily Goal</span>
+                    <span class="profile-value highlight">{{ "%.0f"|format(profile.daily_calorie_goal) }} cal</span>
+                </div>
+            </div>
+            <div class="profile-info">
+                {% if profile.pounds_change < 0 %}
+                    <p>Goal: Lose {{ "%.1f"|format(-profile.pounds_change) }} lbs in {{ "%.1f"|format(profile.weeks) }} weeks</p>
+                {% elif profile.pounds_change > 0 %}
+                    <p>Goal: Gain {{ "%.1f"|format(profile.pounds_change) }} lbs in {{ "%.1f"|format(profile.weeks) }} weeks</p>
+                {% else %}
+                    <p>Goal: Maintain weight</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Date Selector -->
+        <div class="date-selector">
+            <input type="date" id="selectedDate" class="date-input">
+        </div>
+
+        <!-- Daily Summary -->
+        <div class="card summary-card">
+            <h2>Today's Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <span class="summary-label">Calories Eaten</span>
+                    <span class="summary-value" id="caloriesEaten">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Calories Burned</span>
+                    <span class="summary-value" id="caloriesBurned">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Net Calories</span>
+                    <span class="summary-value" id="netCalories">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Remaining</span>
+                    <span class="summary-value highlight" id="remaining">{{ "%.0f"|format(profile.daily_calorie_goal) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="two-column">
+            <!-- Add Workout Section -->
+            <div class="card">
+                <h2>➕ Add Workout</h2>
+                <form id="workoutForm" class="form">
+                    <div class="form-group">
+                        <label for="exerciseName">Exercise</label>
+                        <input type="text" id="exerciseName" name="exerciseName" placeholder="e.g., Running, Squats" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="workoutDuration">Duration (min)</label>
+                        <input type="number" id="workoutDuration" name="workoutDuration" min="1" step="0.5" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="workoutCalories">Calories Burned</label>
+                        <input type="number" id="workoutCalories" name="workoutCalories" min="1" step="0.1" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Add Workout</button>
+                </form>
+                <div id="workoutError" class="error-message" style="display: none;"></div>
+            </div>
+
+            <!-- Add Meal Section -->
+            <div class="card">
+                <h2>🍽️ Add Meal</h2>
+                <form id="mealForm" class="form">
+                    <div class="form-group">
+                        <label for="mealDescription">Meal</label>
+                        <input type="text" id="mealDescription" name="mealDescription" placeholder="e.g., Breakfast - Oatmeal" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mealCalories">Calories</label>
+                        <input type="number" id="mealCalories" name="mealCalories" min="1" step="0.1" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-success">Add Meal</button>
+                </form>
+                <div id="mealError" class="error-message" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Workouts List -->
+        <div class="card">
+            <h2>💪 Workouts</h2>
+            <div id="workoutsList" class="items-list">
+                <p class="empty-message">No workouts logged for this date</p>
+            </div>
+        </div>
+
+        <!-- Meals List -->
+        <div class="card">
+            <h2>🍎 Meals</h2>
+            <div id="mealsList" class="items-list">
+                <p class="empty-message">No meals logged for this date</p>
+            </div>
+        </div>
+
+            <!-- Tracking Charts -->
+            <div class="two-column">
+                <div class="card">
+                    <h2>Daily Completion</h2>
+                    <canvas id="dailyPie" style="margin-top:80px;"></canvas>
+                    <div id="completeResult" style="margin-top:8px;font-weight:600;"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Weekly Weight</h2>
+                    <form id="weightForm" class="form-inline" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <div class="form-group">
+                            <label for="weightDate">Date</label>
+                            <input type="date" id="weightDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="weightValue">Weight (lbs)</label>
+                            <input type="number" id="weightValue" step="0.1" required>
+                        </div>
+                        <button type="submit" class="btn btn-success">Add</button>
+                    </form>
+                    <canvas id="weightChart" style="margin-top:12px;"></canvas>
+                </div>
+            </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Charts
+        let pieChart = null;
+        let weightChart = null;
+
+        // Initialize on DOM ready
+        function initializeDashboard() {
+            console.log('Dashboard initialization started');
+            const today = new Date().toISOString().split('T')[0];
+
+            // Set date inputs (persist selected date in localStorage so a reset/refresh keeps today)
+            const selectedDate = document.getElementById('selectedDate');
+            const weightDate = document.getElementById('weightDate');
+
+            // Use saved date if present, otherwise default to today
+            const savedDate = window.localStorage.getItem('aurora_selected_date');
+            if (selectedDate) selectedDate.value = savedDate || today;
+            if (weightDate) weightDate.value = today;
+
+            // Add event listeners
+            if (selectedDate) {
+                selectedDate.addEventListener('change', (e) => {
+                    // persist selection and load new summary
+                    window.localStorage.setItem('aurora_selected_date', e.target.value);
+                    loadSummary();
+                });
+            }
+
+            // Load initial data
+            loadSummary();
+            initCharts();
+            loadWeights();
+            
+            // Load pie chart with current date data (use selected date if set)
+            updatePie(selectedDate ? selectedDate.value : today, false);
+
+            // Set up form handlers and weight auto-save
+            const workoutForm = document.getElementById('workoutForm');
+            const mealForm = document.getElementById('mealForm');
+            const wForm = document.getElementById('weightForm');
+            const weightValue = document.getElementById('weightValue');
+            
+            console.log('workoutForm:', workoutForm);
+            console.log('mealForm:', mealForm);
+            console.log('wForm:', wForm);
+            console.log('weightValue:', weightValue);
+            
+            if (workoutForm) {
+                workoutForm.addEventListener('submit', workoutFormHandler);
+                console.log('Workout form handler attached');
+            }
+            if (mealForm) {
+                mealForm.addEventListener('submit', mealFormHandler);
+                console.log('Meal form handler attached');
+            }
+            if (wForm) {
+                wForm.addEventListener('submit', weightFormHandler);
+                console.log('Weight form handler attached');
+            }
+            if (weightValue) {
+                weightValue.addEventListener('blur', saveWeight);
+                console.log('Weight value blur listener attached');
+            }
+            
+            console.log('Dashboard initialization complete');
+        }
+
+        // Initialize empty charts (with center text plugin for pie)
+        function initCharts() {
+            // plugin to draw centered percentage text
+            const centerText = {
+                id: 'centerText',
+                beforeDraw(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const ctx = chart.ctx;
+                    const width = chart.width;
+                    const height = chart.height;
+                    ctx.save();
+
+                    const dataset = chart.data.datasets[0];
+                    const value = dataset && dataset.data && dataset.data[0] ? dataset.data[0] : 0;
+                    const text = String(value) + '%';
+
+                    // font size based on chart height
+                    let fontSize = Math.round(height / 6);
+                    ctx.font = fontSize + 'px "Segoe UI", Tahoma, Geneva, sans-serif';
+                    ctx.fillStyle = '#34495e';
+                    ctx.textBaseline = 'middle';
+
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = Math.round(height / 2);
+                    ctx.fillText(text, textX, textY);
+                    ctx.restore();
+                }
+            };
+
+            const pieCtx = document.getElementById('dailyPie').getContext('2d');
+            pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Reached', 'Remaining'],
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: ['#2ecc71', '#ecf0f1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    layout: { padding: 10 },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: [centerText]
+            });
+
+            const weightCtx = document.getElementById('weightChart').getContext('2d');
+            weightChart = new Chart(weightCtx, {
+                type: 'line',
+                data: { 
+                    labels: [], 
+                    datasets: [
+                        { 
+                            label: 'Weight (lbs)', 
+                            data: [], 
+                            borderColor: '#3498db',
+                            pointBackgroundColor: [],
+                            pointBorderColor: [],
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ] 
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Complete day: call API to compute percent reached and update pie chart
+        async function completeDayHandler() {
+            const selectedDate = document.getElementById('selectedDate');
+            if (!selectedDate) return;
+            const date = selectedDate.value;
+            await updatePie(date, true);
+        }
+
+        // Shared: fetch completion data and update pie chart
+        async function updatePie(date, showMessage=false) {
+            if (!date) return;
+            try {
+                const resp = await fetch('/api/complete-day', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ date })
+                });
+
+                if (!resp.ok) {
+                    if (showMessage) {
+                        const err = await resp.json().catch(()=>({}));
+                        document.getElementById('completeResult').textContent = err.error || 'Failed to compute completion';
+                    }
+                    return;
+                }
+
+                const data = await resp.json();
+                const pct = data.percent_reached || 0;
+                renderPie(pct);
+                if (showMessage) {
+                    document.getElementById('completeResult').textContent = `${pct}% of daily goal reached (Net ${Math.round(data.net_calories)} cal)`;
+                }
+            } catch (e) {
+                console.error('updatePie error', e);
+                if (showMessage) document.getElementById('completeResult').textContent = 'Error updating completion';
+            }
+        }
+
+        function renderPie(percent) {
+            if (!pieChart) return;
+            const rem = Math.max(0, 100 - percent);
+            pieChart.data.datasets[0].data = [percent, rem];
+            pieChart.update();
+        }
+
+        // Weight handlers: auto-save on value change
+        async function saveWeight() {
+            const date = document.getElementById('weightDate').value;
+            const weight = parseFloat(document.getElementById('weightValue').value);
+            if (!date || !weight) return;
+            try {
+                const resp = await fetch('/api/weight', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ date, weight })
+                });
+                if (!resp.ok) {
+                    console.error('Failed to save weight');
+                }
+                await loadWeights();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function weightFormHandler(e) {
+            e.preventDefault();
+            await saveWeight();
+        }
+
+        async function loadWeights() {
+            try {
+                const resp = await fetch('/api/weights');
+                const data = await resp.json();
+                console.log('Weights data:', data);
+                const items = data.weights || [];
+                console.log('Weights items:', items);
+                const labels = items.map(i => i.week);
+                const values = items.map(i => i.weight);
+                console.log('Labels:', labels);
+                console.log('Values:', values);
+                renderWeightChart(labels, values);
+            } catch (err) {
+                console.error('Error loading weights', err);
+            }
+        }
+
+        function renderWeightChart(labels, values) {
+            if (!weightChart) return;
+            
+            // Get goal weight from profile
+            const profileData = {{ profile | tojson }};
+            const goalWeight = profileData.goal_weight;
+            const peakWeight = goalWeight + 10;
+            
+            // Color code points based on goal weight
+            const pointColors = values.map(w => {
+                if (w > peakWeight) {
+                    return '#e74c3c'; // Red - above peak
+                } else if (w > goalWeight) {
+                    return '#f39c12'; // Orange - between goal and peak
+                } else {
+                    return '#2ecc71'; // Green - at or below goal
+                }
+            });
+            
+            weightChart.data.labels = labels;
+            weightChart.data.datasets[0].data = values;
+            weightChart.data.datasets[0].pointBackgroundColor = pointColors;
+            weightChart.data.datasets[0].pointBorderColor = pointColors;
+            
+            // Add goal weight reference line
+            if (!weightChart.data.datasets[1]) {
+                weightChart.data.datasets.push({
+                    label: 'Goal Weight',
+                    data: labels.map(() => goalWeight),
+                    borderColor: '#3498db',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            } else {
+                weightChart.data.datasets[1].data = labels.map(() => goalWeight);
+            }
+            
+            // Add peak reference line
+            if (!weightChart.data.datasets[2]) {
+                weightChart.data.datasets.push({
+                    label: 'Peak (+10 lbs)',
+                    data: labels.map(() => peakWeight),
+                    borderColor: '#e74c3c',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            } else {
+                weightChart.data.datasets[2].data = labels.map(() => peakWeight);
+            }
+            
+            weightChart.update();
+        }
+
+        // Load summary and lists for selected date
+        async function loadSummary() {
+            const selectedDate = document.getElementById('selectedDate');
+            if (!selectedDate) return;
+            
+            const date = selectedDate.value;
+
+            // Reset completion UI immediately when date changes
+            const completeResultEl = document.getElementById('completeResult');
+            if (completeResultEl) completeResultEl.textContent = '';
+            // Reset pie to 0% while new data loads
+            try { renderPie(0); } catch (e) {}
+
+            try {
+                await Promise.all([
+                    loadWorkouts(date),
+                    loadMeals(date),
+                    updateSummary(date)
+                ]);
+                // Recompute completion for the selected date after summary loads
+                await updatePie(date, false);
+            } catch (error) {
+                console.error('Error loading summary:', error);
+            }
+        }
+
+        // Load workouts for a date
+        async function loadWorkouts(date) {
+            try {
+                const response = await fetch(`/api/workouts/${date}`);
+                const data = await response.json();
+                const list = document.getElementById('workoutsList');
+
+                if (!list) return;
+
+                if (!data.workouts || data.workouts.length === 0) {
+                    list.innerHTML = '<p class="empty-message">No workouts logged for this date</p>';
+                } else {
+                    let html = '<div class="items-container">';
+                    data.workouts.forEach((workout) => {
+                        html += `
+                            <div class="item">
+                                <div class="item-header">
+                                    <span class="item-title">${workout.name}</span>
+                                    <span class="item-duration">${workout.duration} min</span>
+                                </div>
+                                <div class="item-calories">${workout.calories} cal burned</div>
+                            </div>
+                        `;
+                    });
+                    html += `<div class="total">Total: ${data.total_calories} cal burned</div></div>`;
+                    list.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading workouts:', error);
+            }
+        }
+
+        // Load meals for a date
+        async function loadMeals(date) {
+            try {
+                const response = await fetch(`/api/meals/${date}`);
+                const data = await response.json();
+                const list = document.getElementById('mealsList');
+
+                if (!list) return;
+
+                if (!data.meals || data.meals.length === 0) {
+                    list.innerHTML = '<p class="empty-message">No meals logged for this date</p>';
+                } else {
+                    let html = '<div class="items-container">';
+                    data.meals.forEach((meal) => {
+                        html += `
+                            <div class="item">
+                                <div class="item-header">
+                                    <span class="item-title">${meal.description}</span>
+                                </div>
+                                <div class="item-calories">${meal.calories} cal</div>
+                            </div>
+                        `;
+                    });
+                    html += `<div class="total">Total: ${data.total_calories} cal consumed</div></div>`;
+                    list.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading meals:', error);
+            }
+        }
+
+        // Update daily summary
+        async function updateSummary(date) {
+            try {
+                const response = await fetch(`/api/daily-summary/${date}`);
+                const data = await response.json();
+
+                const caloriesEaten = document.getElementById('caloriesEaten');
+                const caloriesBurned = document.getElementById('caloriesBurned');
+                const netCalories = document.getElementById('netCalories');
+                const remaining = document.getElementById('remaining');
+
+                if (caloriesEaten) caloriesEaten.textContent = Math.round(data.calories_eaten || 0);
+                if (caloriesBurned) caloriesBurned.textContent = Math.round(data.calories_burned || 0);
+                if (netCalories) netCalories.textContent = Math.round(data.net_calories || 0);
+                if (remaining) {
+                    remaining.textContent = Math.round(data.remaining || 0);
+                    
+                    // Change color based on remaining calories
+                    if (data.remaining < 0) {
+                        remaining.style.color = '#e74c3c';
+                    } else if (data.remaining > data.daily_goal * 0.5) {
+                        remaining.style.color = '#2ecc71';
+                    } else {
+                        remaining.style.color = '#f39c12';
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating summary:', error);
+            }
+        }
+
+        // Handle workout form submission
+        async function workoutFormHandler(e) {
+            e.preventDefault();
+            console.log('Workout form submitted');
+            const errorDiv = document.getElementById('workoutError');
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            const selectedDate = document.getElementById('selectedDate');
+            const formData = {
+                date: selectedDate ? selectedDate.value : new Date().toISOString().split('T')[0],
+                exercise_name: document.getElementById('exerciseName').value,
+                duration: document.getElementById('workoutDuration').value,
+                calories: document.getElementById('workoutCalories').value
+            };
+
+            console.log('Workout form data:', formData);
+
+            try {
+                const response = await fetch('/api/add-workout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(formData)
+                });
+
+                console.log('Workout response:', response.status);
+
+                if (response.ok) {
+                    document.getElementById('workoutForm').reset();
+                    const today = document.getElementById('selectedDate').value;
+                    await loadWorkouts(formData.date);
+                    if (formData.date === today) {
+                        await updateSummary(today);
+                    }
+                    // Update pie chart immediately after adding a workout
+                    await updatePie(formData.date, false);
+                } else {
+                    const data = await response.json();
+                    console.error('Workout error:', data);
+                    if (errorDiv) {
+                        errorDiv.textContent = data.error || 'Failed to add workout';
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Workout catch error:', error);
+                if (errorDiv) {
+                    errorDiv.textContent = 'Error adding workout';
+                    errorDiv.style.display = 'block';
+                }
+            }
+        }
+
+        // Handle meal form submission
+        async function mealFormHandler(e) {
+            e.preventDefault();
+            console.log('Meal form submitted');
+            const errorDiv = document.getElementById('mealError');
+            if (errorDiv) errorDiv.style.display = 'none';
+
+            const selectedDate = document.getElementById('selectedDate');
+            const formData = {
+                date: selectedDate ? selectedDate.value : new Date().toISOString().split('T')[0],
+                description: document.getElementById('mealDescription').value,
+                calories: document.getElementById('mealCalories').value
+            };
+
+            console.log('Meal form data:', formData);
+
+            try {
+                const response = await fetch('/api/add-meal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(formData)
+                });
+
+                console.log('Meal response:', response.status);
+
+                if (response.ok) {
+                    document.getElementById('mealForm').reset();
+                    const today = document.getElementById('selectedDate').value;
+                    await loadMeals(formData.date);
+                    if (formData.date === today) {
+                        await updateSummary(today);
+                    }
+                    // Update pie chart immediately after adding a meal
+                    await updatePie(formData.date, false);
+                } else {
+                    const data = await response.json();
+                    console.error('Meal error:', data);
+                    if (errorDiv) {
+                        errorDiv.textContent = data.error || 'Failed to add meal';
+                        errorDiv.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Meal catch error:', error);
+                if (errorDiv) {
+                    errorDiv.textContent = 'Error adding meal';
+                    errorDiv.style.display = 'block';
+                }
+            }
+        }
+
+        // Reset profile
+        function resetProfile() {
+            if (confirm('Are you sure you want to reset your profile? All data will be cleared.')) {
+                // set selected date to today so after reset dashboard shows current date
+                try { window.localStorage.setItem('aurora_selected_date', new Date().toISOString().split('T')[0]); } catch(e) {}
+                fetch('/api/reset-profile', { method: 'POST' })
+                    .then(() => { window.location.href = '/'; });
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            initializeDashboard();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Fitness Tracker - User Survey</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="survey-container">
+            <div class="survey-header">
+                <h1>🏋️ Aurora Fitness Tracker</h1>
+                <p>Get Started with Your Fitness Journey</p>
+            </div>
+
+            <form id="surveyForm" class="survey-form">
+                <div class="form-group">
+                    <label for="age">Age (years)</label>
+                    <input type="number" id="age" name="age" min="1" max="150" required>
+                    <span class="help-text">How old are you?</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="current_weight">Current Weight (lbs)</label>
+                    <input type="number" id="current_weight" name="current_weight" min="0.1" step="0.1" required>
+                    <span class="help-text">Your current weight</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="goal_weight">Goal Weight (lbs)</label>
+                    <input type="number" id="goal_weight" name="goal_weight" min="0.1" step="0.1" required>
+                    <span class="help-text">Your target weight</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="weeks">Timeline (weeks)</label>
+                    <input type="number" id="weeks" name="weeks" min="0.1" step="0.1" required>
+                    <span class="help-text">How many weeks to reach your goal?</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Start Tracking</button>
+            </form>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('surveyForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.style.display = 'none';
+
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData);
+
+                try {
+                    const response = await fetch('/api/survey', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Survey saved, redirecting to dashboard...');
+                        // Wait a moment for the session cookie to be set, then redirect
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 200);
+                    } else {
+                        const error = await response.json();
+                        errorDiv.textContent = error.error || 'An error occurred';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    errorDiv.textContent = 'Failed to submit survey. Please try again.';
+                    errorDiv.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

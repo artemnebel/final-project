@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurora Fitness Tracker</title>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // ==================== DATA STORAGE ====================
+        const Storage = {
+            getProfile() {
+                const data = localStorage.getItem('aurora_profile');
+                return data ? JSON.parse(data) : null;
+            },
+            saveProfile(profile) {
+                localStorage.setItem('aurora_profile', JSON.stringify(profile));
+            },
+            getWorkouts() {
+                const data = localStorage.getItem('aurora_workouts');
+                return data ? JSON.parse(data) : {};
+            },
+            saveWorkouts(workouts) {
+                localStorage.setItem('aurora_workouts', JSON.stringify(workouts));
+            },
+            getMeals() {
+                const data = localStorage.getItem('aurora_meals');
+                return data ? JSON.parse(data) : {};
+            },
+            saveMeals(meals) {
+                localStorage.setItem('aurora_meals', JSON.stringify(meals));
+            },
+            getWeights() {
+                const data = localStorage.getItem('aurora_weights');
+                return data ? JSON.parse(data) : {};
+            },
+            saveWeights(weights) {
+                localStorage.setItem('aurora_weights', JSON.stringify(weights));
+            },
+            clearAll() {
+                localStorage.removeItem('aurora_profile');
+                localStorage.removeItem('aurora_workouts');
+                localStorage.removeItem('aurora_meals');
+                localStorage.removeItem('aurora_weights');
+                localStorage.removeItem('aurora_selected_date');
+            }
+        };
+
+        // ==================== HELPER FUNCTIONS ====================
+        function calculateCalorieGoal(age, currentWeight, goalWeight, weeks) {
+            const days = weeks * 7;
+            const poundsChange = goalWeight - currentWeight;
+            const totalCalorieChange = poundsChange * 3500;
+            const dailyCalorieChange = days !== 0 ? totalCalorieChange / days : 0;
+            const estimatedMaintenance = currentWeight * 15;
+            let suggestedDailyCalories = estimatedMaintenance + dailyCalorieChange;
+
+            if (suggestedDailyCalories < 1200) {
+                suggestedDailyCalories = 1200;
+            }
+
+            return {
+                age,
+                current_weight: currentWeight,
+                goal_weight: goalWeight,
+                weeks,
+                days,
+                pounds_change: poundsChange,
+                total_calorie_change: totalCalorieChange,
+                daily_calorie_change: dailyCalorieChange,
+                estimated_maintenance: estimatedMaintenance,
+                daily_calorie_goal: suggestedDailyCalories
+            };
+        }
+
+        function getWorkoutsForDate(date) {
+            const workouts = Storage.getWorkouts();
+            const dayWorkouts = workouts[date] || [];
+            const total = dayWorkouts.reduce((sum, w) => sum + parseFloat(w.calories), 0);
+            return { workouts: dayWorkouts, total };
+        }
+
+        function getMealsForDate(date) {
+            const meals = Storage.getMeals();
+            const dayMeals = meals[date] || [];
+            const total = dayMeals.reduce((sum, m) => sum + parseFloat(m.calories), 0);
+            return { meals: dayMeals, total };
+        }
+
+        function addWorkout(date, name, duration, calories) {
+            const workouts = Storage.getWorkouts();
+            if (!workouts[date]) workouts[date] = [];
+            workouts[date].push({ name, duration: parseFloat(duration), calories: parseFloat(calories) });
+            Storage.saveWorkouts(workouts);
+        }
+
+        function addMeal(date, description, calories) {
+            const meals = Storage.getMeals();
+            if (!meals[date]) meals[date] = [];
+            meals[date].push({ description, calories: parseFloat(calories) });
+            Storage.saveMeals(meals);
+        }
+
+        function addWeight(date, weight) {
+            const weights = Storage.getWeights();
+            const dt = new Date(date);
+            const isoYear = dt.getFullYear();
+            const isoWeek = getWeekNumber(dt);
+            const key = `${isoYear}-W${String(isoWeek).padStart(2, '0')}`;
+            weights[key] = { week: key, weight: parseFloat(weight), date };
+            Storage.saveWeights(weights);
+        }
+
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        // ==================== SURVEY PAGE ====================
+        function renderSurvey() {
+            document.getElementById('app').innerHTML = `
+                <div class="container">
+                    <div class="survey-container">
+                        <div class="survey-header">
+                            <h1>🏋️ Aurora Fitness Tracker</h1>
+                            <p>Get Started with Your Fitness Journey</p>
+                        </div>
+
+                        <form id="surveyForm" class="survey-form">
+                            <div class="form-group">
+                                <label for="age">Age (years)</label>
+                                <input type="number" id="age" name="age" min="1" max="150" required>
+                                <span class="help-text">How old are you?</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="current_weight">Current Weight (lbs)</label>
+                                <input type="number" id="current_weight" name="current_weight" min="0.1" step="0.1" required>
+                                <span class="help-text">Your current weight</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="goal_weight">Goal Weight (lbs)</label>
+                                <input type="number" id="goal_weight" name="goal_weight" min="0.1" step="0.1" required>
+                                <span class="help-text">Your target weight</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="weeks">Timeline (weeks)</label>
+                                <input type="number" id="weeks" name="weeks" min="0.1" step="0.1" required>
+                                <span class="help-text">How many weeks to reach your goal?</span>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Start Tracking</button>
+                        </form>
+
+                        <div id="errorMessage" class="error-message" style="display: none;"></div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('surveyForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const age = parseInt(document.getElementById('age').value);
+                const currentWeight = parseFloat(document.getElementById('current_weight').value);
+                const goalWeight = parseFloat(document.getElementById('goal_weight').value);
+                const weeks = parseFloat(document.getElementById('weeks').value);
+
+                const profile = calculateCalorieGoal(age, currentWeight, goalWeight, weeks);
+                Storage.saveProfile(profile);
+                renderDashboard();
+            });
+        }
+
+        // ==================== DASHBOARD ====================
+        let pieChart = null;
+        let weightChart = null;
+
+        function renderDashboard() {
+            const profile = Storage.getProfile();
+            const today = new Date().toISOString().split('T')[0];
+            const savedDate = localStorage.getItem('aurora_selected_date') || today;
+
+            document.getElementById('app').innerHTML = `
+                <div class="navbar">
+                    <div class="navbar-container">
+                        <h1 class="logo">🏋️ Aurora Fitness Tracker</h1>
+                        <button class="btn btn-secondary" onclick="resetProfile()">Reset Profile</button>
+                    </div>
+                </div>
+
+                <div class="container">
+                    <!-- Profile Card -->
+                    <div class="card profile-card">
+                        <h2>Your Profile</h2>
+                        <div class="profile-grid">
+                            <div class="profile-item">
+                                <span class="profile-label">Age</span>
+                                <span class="profile-value">${profile.age}</span>
+                            </div>
+                            <div class="profile-item">
+                                <span class="profile-label">Current Weight</span>
+                                <span class="profile-value">${profile.current_weight.toFixed(1)} lbs</span>
+                            </div>
+                            <div class="profile-item">
+                                <span class="profile-label">Goal Weight</span>
+                                <span class="profile-value">${profile.goal_weight.toFixed(1)} lbs</span>
+                            </div>
+                            <div class="profile-item">
+                                <span class="profile-label">Daily Goal</span>
+                                <span class="profile-value highlight">${Math.round(profile.daily_calorie_goal)} cal</span>
+                            </div>
+                        </div>
+                        <div class="profile-info">
+                            ${profile.pounds_change < 0
+                                ? `<p>Goal: Lose ${Math.abs(profile.pounds_change).toFixed(1)} lbs in ${profile.weeks.toFixed(1)} weeks</p>`
+                                : profile.pounds_change > 0
+                                ? `<p>Goal: Gain ${profile.pounds_change.toFixed(1)} lbs in ${profile.weeks.toFixed(1)} weeks</p>`
+                                : `<p>Goal: Maintain weight</p>`
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Date Selector -->
+                    <div class="date-selector">
+                        <input type="date" id="selectedDate" class="date-input" value="${savedDate}">
+                    </div>
+
+                    <!-- Daily Summary -->
+                    <div class="card summary-card">
+                        <h2>Today's Summary</h2>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <span class="summary-label">Calories Eaten</span>
+                                <span class="summary-value" id="caloriesEaten">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Calories Burned</span>
+                                <span class="summary-value" id="caloriesBurned">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Net Calories</span>
+                                <span class="summary-value" id="netCalories">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Remaining</span>
+                                <span class="summary-value highlight" id="remaining">${Math.round(profile.daily_calorie_goal)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="two-column">
+                        <!-- Add Workout -->
+                        <div class="card">
+                            <h2>➕ Add Workout</h2>
+                            <form id="workoutForm" class="form">
+                                <div class="form-group">
+                                    <label for="exerciseName">Exercise</label>
+                                    <input type="text" id="exerciseName" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="workoutDuration">Duration (min)</label>
+                                    <input type="number" id="workoutDuration" min="1" step="0.5" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="workoutCalories">Calories Burned</label>
+                                    <input type="number" id="workoutCalories" min="1" step="0.1" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Add Workout</button>
+                            </form>
+                        </div>
+
+                        <!-- Add Meal -->
+                        <div class="card">
+                            <h2>🍽️ Add Meal</h2>
+                            <form id="mealForm" class="form">
+                                <div class="form-group">
+                                    <label for="mealDescription">Meal</label>
+                                    <input type="text" id="mealDescription" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mealCalories">Calories</label>
+                                    <input type="number" id="mealCalories" min="1" step="0.1" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Add Meal</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Workouts List -->
+                    <div class="card">
+                        <h2>💪 Workouts</h2>
+                        <div id="workoutsList" class="items-list"></div>
+                    </div>
+
+                    <!-- Meals List -->
+                    <div class="card">
+                        <h2>🍎 Meals</h2>
+                        <div id="mealsList" class="items-list"></div>
+                    </div>
+
+                    <!-- Charts -->
+                    <div class="two-column">
+                        <div class="card">
+                            <h2>Daily Completion</h2>
+                            <canvas id="dailyPie" style="margin-top:80px;"></canvas>
+                            <div id="completeResult" style="margin-top:8px;font-weight:600;"></div>
+                        </div>
+
+                        <div class="card">
+                            <h2>Weekly Weight</h2>
+                            <form id="weightForm" class="form-inline" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <div class="form-group">
+                                    <label for="weightDate">Date</label>
+                                    <input type="date" id="weightDate" value="${today}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="weightValue">Weight (lbs)</label>
+                                    <input type="number" id="weightValue" step="0.1" required>
+                                </div>
+                                <button type="submit" class="btn btn-success">Add</button>
+                            </form>
+                            <canvas id="weightChart" style="margin-top:12px;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            initializeDashboard();
+        }
+
+        function initializeDashboard() {
+            const selectedDate = document.getElementById('selectedDate');
+
+            selectedDate.addEventListener('change', (e) => {
+                localStorage.setItem('aurora_selected_date', e.target.value);
+                loadSummary();
+            });
+
+            loadSummary();
+            initCharts();
+            loadWeights();
+            updatePie(selectedDate.value);
+
+            document.getElementById('workoutForm').addEventListener('submit', workoutFormHandler);
+            document.getElementById('mealForm').addEventListener('submit', mealFormHandler);
+            document.getElementById('weightForm').addEventListener('submit', weightFormHandler);
+        }
+
+        function initCharts() {
+            const centerText = {
+                id: 'centerText',
+                beforeDraw(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const ctx = chart.ctx;
+                    const width = chart.width;
+                    const height = chart.height;
+                    ctx.save();
+
+                    const dataset = chart.data.datasets[0];
+                    const value = dataset && dataset.data && dataset.data[0] ? dataset.data[0] : 0;
+                    const text = String(value) + '%';
+
+                    let fontSize = Math.round(height / 6);
+                    ctx.font = fontSize + 'px "Segoe UI", Tahoma, Geneva, sans-serif';
+                    ctx.fillStyle = '#34495e';
+                    ctx.textBaseline = 'middle';
+
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = Math.round(height / 2);
+                    ctx.fillText(text, textX, textY);
+                    ctx.restore();
+                }
+            };
+
+            const pieCtx = document.getElementById('dailyPie').getContext('2d');
+            pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Reached', 'Remaining'],
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: ['#2ecc71', '#ecf0f1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    layout: { padding: 10 },
+                    plugins: { legend: { display: false } }
+                },
+                plugins: [centerText]
+            });
+
+            const weightCtx = document.getElementById('weightChart').getContext('2d');
+            weightChart = new Chart(weightCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Weight (lbs)',
+                            data: [],
+                            borderColor: '#3498db',
+                            pointBackgroundColor: [],
+                            pointBorderColor: [],
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        function updatePie(date) {
+            const profile = Storage.getProfile();
+            const { total: caloriesEaten } = getMealsForDate(date);
+            const { total: caloriesBurned } = getWorkoutsForDate(date);
+            const netCalories = caloriesEaten - caloriesBurned;
+            const dailyGoal = profile.daily_calorie_goal;
+            const percent = dailyGoal > 0 ? Math.max(0, Math.min(100, Math.round((netCalories / dailyGoal) * 100))) : 0;
+
+            renderPie(percent);
+            document.getElementById('completeResult').textContent = `${percent}% of daily goal reached (Net ${Math.round(netCalories)} cal)`;
+        }
+
+        function renderPie(percent) {
+            if (!pieChart) return;
+            const rem = Math.max(0, 100 - percent);
+            pieChart.data.datasets[0].data = [percent, rem];
+            pieChart.update();
+        }
+
+        function loadWeights() {
+            const weights = Storage.getWeights();
+            const items = Object.values(weights).sort((a, b) => a.week.localeCompare(b.week));
+            const labels = items.map(i => i.week);
+            const values = items.map(i => i.weight);
+            renderWeightChart(labels, values);
+        }
+
+        function renderWeightChart(labels, values) {
+            if (!weightChart) return;
+
+            const profile = Storage.getProfile();
+            const goalWeight = profile.goal_weight;
+            const peakWeight = goalWeight + 10;
+
+            const pointColors = values.map(w => {
+                if (w > peakWeight) return '#e74c3c';
+                else if (w > goalWeight) return '#f39c12';
+                else return '#2ecc71';
+            });
+
+            weightChart.data.labels = labels;
+            weightChart.data.datasets[0].data = values;
+            weightChart.data.datasets[0].pointBackgroundColor = pointColors;
+            weightChart.data.datasets[0].pointBorderColor = pointColors;
+
+            if (!weightChart.data.datasets[1]) {
+                weightChart.data.datasets.push({
+                    label: 'Goal Weight',
+                    data: labels.map(() => goalWeight),
+                    borderColor: '#3498db',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            }
+
+            if (!weightChart.data.datasets[2]) {
+                weightChart.data.datasets.push({
+                    label: 'Peak (+10 lbs)',
+                    data: labels.map(() => peakWeight),
+                    borderColor: '#e74c3c',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            }
+
+            weightChart.update();
+        }
+
+        function loadSummary() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            loadWorkouts(selectedDate);
+            loadMeals(selectedDate);
+            updateSummary(selectedDate);
+            updatePie(selectedDate);
+        }
+
+        function loadWorkouts(date) {
+            const { workouts, total } = getWorkoutsForDate(date);
+            const list = document.getElementById('workoutsList');
+
+            if (workouts.length === 0) {
+                list.innerHTML = '<p class="empty-message">No workouts logged for this date</p>';
+            } else {
+                let html = '<div class="items-container">';
+                workouts.forEach(w => {
+                    html += `
+                        <div class="item">
+                            <div class="item-header">
+                                <span class="item-title">${w.name}</span>
+                                <span class="item-duration">${w.duration} min</span>
+                            </div>
+                            <div class="item-calories">${w.calories} cal burned</div>
+                        </div>
+                    `;
+                });
+                html += `<div class="total">Total: ${total} cal burned</div></div>`;
+                list.innerHTML = html;
+            }
+        }
+
+        function loadMeals(date) {
+            const { meals, total } = getMealsForDate(date);
+            const list = document.getElementById('mealsList');
+
+            if (meals.length === 0) {
+                list.innerHTML = '<p class="empty-message">No meals logged for this date</p>';
+            } else {
+                let html = '<div class="items-container">';
+                meals.forEach(m => {
+                    html += `
+                        <div class="item">
+                            <div class="item-header">
+                                <span class="item-title">${m.description}</span>
+                            </div>
+                            <div class="item-calories">${m.calories} cal</div>
+                        </div>
+                    `;
+                });
+                html += `<div class="total">Total: ${total} cal consumed</div></div>`;
+                list.innerHTML = html;
+            }
+        }
+
+        function updateSummary(date) {
+            const profile = Storage.getProfile();
+            const { total: caloriesEaten } = getMealsForDate(date);
+            const { total: caloriesBurned } = getWorkoutsForDate(date);
+            const netCalories = caloriesEaten - caloriesBurned;
+            const remaining = profile.daily_calorie_goal - netCalories;
+
+            document.getElementById('caloriesEaten').textContent = Math.round(caloriesEaten);
+            document.getElementById('caloriesBurned').textContent = Math.round(caloriesBurned);
+            document.getElementById('netCalories').textContent = Math.round(netCalories);
+            document.getElementById('remaining').textContent = Math.round(remaining);
+
+            const remainingEl = document.getElementById('remaining');
+            if (remaining < 0) {
+                remainingEl.style.color = '#e74c3c';
+            } else if (remaining > profile.daily_calorie_goal * 0.5) {
+                remainingEl.style.color = '#2ecc71';
+            } else {
+                remainingEl.style.color = '#f39c12';
+            }
+        }
+
+        function workoutFormHandler(e) {
+            e.preventDefault();
+            const date = document.getElementById('selectedDate').value;
+            const name = document.getElementById('exerciseName').value;
+            const duration = document.getElementById('workoutDuration').value;
+            const calories = document.getElementById('workoutCalories').value;
+
+            addWorkout(date, name, duration, calories);
+            document.getElementById('workoutForm').reset();
+            loadSummary();
+        }
+
+        function mealFormHandler(e) {
+            e.preventDefault();
+            const date = document.getElementById('selectedDate').value;
+            const description = document.getElementById('mealDescription').value;
+            const calories = document.getElementById('mealCalories').value;
+
+            addMeal(date, description, calories);
+            document.getElementById('mealForm').reset();
+            loadSummary();
+        }
+
+        function weightFormHandler(e) {
+            e.preventDefault();
+            const date = document.getElementById('weightDate').value;
+            const weight = document.getElementById('weightValue').value;
+
+            addWeight(date, weight);
+            loadWeights();
+        }
+
+        function resetProfile() {
+            if (confirm('Are you sure you want to reset your profile? All data will be cleared.')) {
+                Storage.clearAll();
+                init();
+            }
+        }
+
+        // ==================== INIT ====================
+        function init() {
+            const profile = Storage.getProfile();
+            if (profile) {
+                renderDashboard();
+            } else {
+                renderSurvey();
+            }
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>

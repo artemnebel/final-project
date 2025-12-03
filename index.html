@@ -311,7 +311,6 @@
                         <div class="card">
                             <h2>Daily Completion</h2>
                             <canvas id="dailyPie" style="margin-top:80px;"></canvas>
-                            <div id="completeResult" style="margin-top:8px;font-weight:600;"></div>
                         </div>
 
                         <div class="card">
@@ -438,7 +437,6 @@
             const percent = dailyGoal > 0 ? Math.max(0, Math.min(100, Math.round((netCalories / dailyGoal) * 100))) : 0;
 
             renderPie(percent);
-            document.getElementById('completeResult').textContent = `${percent}% of daily goal reached (Net ${Math.round(netCalories)} cal)`;
         }
 
         function renderPie(percent) {

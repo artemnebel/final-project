@@ -455,7 +455,7 @@
             if (!pieChart) return;
             const rem = Math.max(0, 100 - percent);
             pieChart.data.datasets[0].data = [percent, rem];
-            pieChart.update();
+            pieChart.update('active');
         }
 
         function loadWeights() {

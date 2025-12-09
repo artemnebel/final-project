@@ -1,3 +1,19 @@
+# Program Name: app.py
+# Author: Artem L. Nebel, Aurora Bardhoshi, Avaan S. Rayamajhi
+# Date: 12/01/2025
+#
+# Description:
+#   This program is a simple Fitness Tracker. It:
+#       - Collects user information (age, weight, goal, timeline)
+#       - Estimates a daily calorie goal
+#       - Lets users log workouts (exercise, duration, calories burned)
+#       - Lets users log meals (description, calories eaten)
+#       - Shows daily summaries and overall trends
+#
+#   Data is stored using Python dictionaries and lists.
+#   The program runs in a loop with a text-based menu so the user
+#   can perform multiple actions in one session.
+
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 from datetime import datetime, timedelta
 import json

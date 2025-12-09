@@ -124,10 +124,10 @@ def add_weight(date, weight):
 def get_weights():
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute('SELECT week, weight FROM weights ORDER BY week')
+    cur.execute('SELECT week, date, weight FROM weights ORDER BY date')
     rows = cur.fetchall()
     conn.close()
-    return [{'week': r['week'], 'weight': r['weight']} for r in rows]
+    return [{'week': r['week'], 'date': r['date'], 'weight': r['weight']} for r in rows]
 
 # Completed days
 def add_completed_day(date, calories_eaten, calories_burned, net_calories, daily_goal, percent_reached):

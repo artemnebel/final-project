@@ -163,6 +163,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script>
         // Charts
         let pieChart = null;
@@ -287,12 +288,11 @@
             const weightCtx = document.getElementById('weightChart').getContext('2d');
             weightChart = new Chart(weightCtx, {
                 type: 'line',
-                data: { 
-                    labels: [], 
+                data: {
                     datasets: [
-                        { 
-                            label: 'Weight (lbs)', 
-                            data: [], 
+                        {
+                            label: 'Weight (lbs)',
+                            data: [],
                             borderColor: '#3498db',
                             pointBackgroundColor: [],
                             pointBorderColor: [],
@@ -301,10 +301,10 @@
                             fill: false,
                             tension: 0.1
                         }
-                    ] 
+                    ]
                 },
-                options: { 
-                    responsive: true, 
+                options: {
+                    responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
@@ -312,8 +312,26 @@
                         }
                     },
                     scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                },
+                                tooltipFormat: 'PPP'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
                         y: {
-                            beginAtZero: false
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Weight (lbs)'
+                            }
                         }
                     }
                 }
@@ -399,26 +417,29 @@
                 console.log('Weights data:', data);
                 const items = data.weights || [];
                 console.log('Weights items:', items);
-                const labels = items.map(i => i.week);
-                const values = items.map(i => i.weight);
-                console.log('Labels:', labels);
-                console.log('Values:', values);
-                renderWeightChart(labels, values);
+                renderWeightChart(items);
             } catch (err) {
                 console.error('Error loading weights', err);
             }
         }
 
-        function renderWeightChart(labels, values) {
+        function renderWeightChart(items) {
             if (!weightChart) return;
-            
+
             // Get goal weight from profile
             const profileData = {{ profile | tojson }};
             const goalWeight = profileData.goal_weight;
             const peakWeight = goalWeight + 10;
-            
+
+            // Transform data to {x: date, y: weight} format for time scale
+            const dataPoints = items.map(item => ({
+                x: item.date,
+                y: item.weight
+            }));
+
             // Color code points based on goal weight
-            const pointColors = values.map(w => {
+            const pointColors = items.map(item => {
+                const w = item.weight;
                 if (w > peakWeight) {
                     return '#e74c3c'; // Red - above peak
                 } else if (w > goalWeight) {
@@ -427,42 +448,48 @@
                     return '#2ecc71'; // Green - at or below goal
                 }
             });
-            
-            weightChart.data.labels = labels;
-            weightChart.data.datasets[0].data = values;
+
+            // Update weight data
+            weightChart.data.datasets[0].data = dataPoints;
             weightChart.data.datasets[0].pointBackgroundColor = pointColors;
             weightChart.data.datasets[0].pointBorderColor = pointColors;
-            
-            // Add goal weight reference line
-            if (!weightChart.data.datasets[1]) {
-                weightChart.data.datasets.push({
-                    label: 'Goal Weight',
-                    data: labels.map(() => goalWeight),
-                    borderColor: '#3498db',
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0,
-                    tension: 0
-                });
-            } else {
-                weightChart.data.datasets[1].data = labels.map(() => goalWeight);
+
+            // Create goal weight reference line if we have data
+            if (items.length > 0) {
+                const firstDate = items[0].date;
+                const lastDate = items[items.length - 1].date;
+
+                // Add goal weight reference line
+                if (!weightChart.data.datasets[1]) {
+                    weightChart.data.datasets.push({
+                        label: 'Goal Weight',
+                        data: [{x: firstDate, y: goalWeight}, {x: lastDate, y: goalWeight}],
+                        borderColor: '#3498db',
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        tension: 0
+                    });
+                } else {
+                    weightChart.data.datasets[1].data = [{x: firstDate, y: goalWeight}, {x: lastDate, y: goalWeight}];
+                }
+
+                // Add peak reference line
+                if (!weightChart.data.datasets[2]) {
+                    weightChart.data.datasets.push({
+                        label: 'Peak (+10 lbs)',
+                        data: [{x: firstDate, y: peakWeight}, {x: lastDate, y: peakWeight}],
+                        borderColor: '#e74c3c',
+                        borderDash: [5, 5],
+                        fill: false,
+                        pointRadius: 0,
+                        tension: 0
+                    });
+                } else {
+                    weightChart.data.datasets[2].data = [{x: firstDate, y: peakWeight}, {x: lastDate, y: peakWeight}];
+                }
             }
-            
-            // Add peak reference line
-            if (!weightChart.data.datasets[2]) {
-                weightChart.data.datasets.push({
-                    label: 'Peak (+10 lbs)',
-                    data: labels.map(() => peakWeight),
-                    borderColor: '#e74c3c',
-                    borderDash: [5, 5],
-                    fill: false,
-                    pointRadius: 0,
-                    tension: 0
-                });
-            } else {
-                weightChart.data.datasets[2].data = labels.map(() => peakWeight);
-            }
-            
+
             weightChart.update();
         }
 

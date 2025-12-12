@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Fitness Tracker - Dashboard</title>
+    <title>AAA Fitness Tracker - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="navbar">
         <div class="navbar-container">
-            <h1 class="logo">🏋️ Aurora Fitness Tracker</h1>
+            <h1 class="logo">🏋️ AAA Fitness Tracker</h1>
             <button class="btn btn-secondary" onclick="resetProfile()">Reset Profile</button>
         </div>
     </div>
@@ -179,7 +179,7 @@
             const weightDate = document.getElementById('weightDate');
 
             // Use saved date if present, otherwise default to today
-            const savedDate = window.localStorage.getItem('aurora_selected_date');
+            const savedDate = window.localStorage.getItem('aaa_selected_date');
             if (selectedDate) selectedDate.value = savedDate || today;
             if (weightDate) weightDate.value = today;
 
@@ -187,7 +187,7 @@
             if (selectedDate) {
                 selectedDate.addEventListener('change', (e) => {
                     // persist selection and load new summary
-                    window.localStorage.setItem('aurora_selected_date', e.target.value);
+                    window.localStorage.setItem('aaa_selected_date', e.target.value);
                     loadSummary();
                 });
             }
@@ -722,7 +722,7 @@
         function resetProfile() {
             if (confirm('Are you sure you want to reset your profile? All data will be cleared.')) {
                 // set selected date to today so after reset dashboard shows current date
-                try { window.localStorage.setItem('aurora_selected_date', new Date().toISOString().split('T')[0]); } catch(e) {}
+                try { window.localStorage.setItem('aaa_selected_date', new Date().toISOString().split('T')[0]); } catch(e) {}
                 fetch('/api/reset-profile', { method: 'POST' })
                     .then(() => { window.location.href = '/'; });
             }

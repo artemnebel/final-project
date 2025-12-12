@@ -21,7 +21,7 @@ import os
 import logging
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
-app.secret_key = 'aurora_fitness_tracker_secret_key_12345'
+app.secret_key = 'aaa_fitness_tracker_secret_key_12345'
 app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP (development)
 app.config['SESSION_COOKIE_HTTPONLY'] = False
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'

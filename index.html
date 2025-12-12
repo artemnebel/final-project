@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aurora Fitness Tracker</title>
+    <title>AAA Fitness Tracker</title>
     <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
@@ -11,46 +11,46 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // ==================== DATA STORAGE ====================
+        //DATA STORAGE
         const Storage = {
             getProfile() {
-                const data = localStorage.getItem('aurora_profile');
+                const data = localStorage.getItem('aaa_profile');
                 return data ? JSON.parse(data) : null;
             },
             saveProfile(profile) {
-                localStorage.setItem('aurora_profile', JSON.stringify(profile));
+                localStorage.setItem('aaa_profile', JSON.stringify(profile));
             },
             getWorkouts() {
-                const data = localStorage.getItem('aurora_workouts');
+                const data = localStorage.getItem('aaa_workouts');
                 return data ? JSON.parse(data) : {};
             },
             saveWorkouts(workouts) {
-                localStorage.setItem('aurora_workouts', JSON.stringify(workouts));
+                localStorage.setItem('aaa_workouts', JSON.stringify(workouts));
             },
             getMeals() {
-                const data = localStorage.getItem('aurora_meals');
+                const data = localStorage.getItem('aaa_meals');
                 return data ? JSON.parse(data) : {};
             },
             saveMeals(meals) {
-                localStorage.setItem('aurora_meals', JSON.stringify(meals));
+                localStorage.setItem('aaa_meals', JSON.stringify(meals));
             },
             getWeights() {
-                const data = localStorage.getItem('aurora_weights');
+                const data = localStorage.getItem('aaa_weights');
                 return data ? JSON.parse(data) : {};
             },
             saveWeights(weights) {
-                localStorage.setItem('aurora_weights', JSON.stringify(weights));
+                localStorage.setItem('aaa_weights', JSON.stringify(weights));
             },
             clearAll() {
-                localStorage.removeItem('aurora_profile');
-                localStorage.removeItem('aurora_workouts');
-                localStorage.removeItem('aurora_meals');
-                localStorage.removeItem('aurora_weights');
-                localStorage.removeItem('aurora_selected_date');
+                localStorage.removeItem('aaa_profile');
+                localStorage.removeItem('aaa_workouts');
+                localStorage.removeItem('aaa_meals');
+                localStorage.removeItem('aaa_weights');
+                localStorage.removeItem('aaa_selected_date');
             }
         };
 
-        // ==================== HELPER FUNCTIONS ====================
+        //  HELPER FUNCTIONS 
         function calculateCalorieGoal(age, currentWeight, goalWeight, weeks) {
             const days = weeks * 7;
             const poundsChange = goalWeight - currentWeight;
@@ -123,13 +123,13 @@
             return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
         }
 
-        // ==================== SURVEY PAGE ====================
+        // SURVEY PAGE 
         function renderSurvey() {
             document.getElementById('app').innerHTML = `
                 <div class="container">
                     <div class="survey-container">
                         <div class="survey-header">
-                            <h1>🏋️ Aurora Fitness Tracker</h1>
+                            <h1>🏋️ AAA Fitness Tracker</h1>
                             <p>Get Started with Your Fitness Journey</p>
                         </div>
 
@@ -179,19 +179,19 @@
             });
         }
 
-        // ==================== DASHBOARD ====================
+        //  DASHBOARD 
         let pieChart = null;
         let weightChart = null;
 
         function renderDashboard() {
             const profile = Storage.getProfile();
             const today = new Date().toISOString().split('T')[0];
-            const savedDate = localStorage.getItem('aurora_selected_date') || today;
+            const savedDate = localStorage.getItem('aaa_selected_date') || today;
 
             document.getElementById('app').innerHTML = `
                 <div class="navbar">
                     <div class="navbar-container">
-                        <h1 class="logo">🏋️ Aurora Fitness Tracker</h1>
+                        <h1 class="logo">🏋️ AAA Fitness Tracker</h1>
                         <button class="btn btn-secondary" onclick="resetProfile()">Reset Profile</button>
                     </div>
                 </div>
@@ -339,7 +339,7 @@
             const selectedDate = document.getElementById('selectedDate');
 
             selectedDate.addEventListener('change', (e) => {
-                localStorage.setItem('aurora_selected_date', e.target.value);
+                localStorage.setItem('aaa_selected_date', e.target.value);
                 loadSummary();
             });
 

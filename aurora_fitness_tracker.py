@@ -218,8 +218,8 @@ def view_workouts_for_date(date):
 
 # Main menu
 if __name__ == "__main__":
-    print("Welcome to Aurora Fitness Tracker!")
-    
+    print("Welcome to AAA Fitness Tracker!")
+
     # Start with user survey
     user_profile = user_survey()
     

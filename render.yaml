@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: aurora-fitness-tracker
+    name: AAA-fitness-tracker
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app

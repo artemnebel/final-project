@@ -1,4 +1,4 @@
-/* ==================== GENERAL STYLES ==================== */
+/* GENERAL STYLES */
 * {
     margin: 0;
     padding: 0;
@@ -18,7 +18,7 @@ body {
     padding: 20px;
 }
 
-/* ==================== NAVBAR ==================== */
+/* NAVBAR  */
 .navbar {
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -45,7 +45,7 @@ body {
     background-clip: text;
 }
 
-/* ==================== CARDS ==================== */
+/*CARDS*/
 .card {
     background: white;
     border-radius: 12px;
@@ -68,7 +68,7 @@ body {
     padding-bottom: 10px;
 }
 
-/* ==================== PROFILE CARD ==================== */
+/*  PROFILE CARD */
 .profile-card {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -120,7 +120,7 @@ body {
     font-size: 16px;
 }
 
-/* ==================== SUMMARY CARD ==================== */
+/*  SUMMARY CARD  */
 .summary-card {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
@@ -166,7 +166,7 @@ body {
     font-size: 36px;
 }
 
-/* ==================== FORM STYLES ==================== */
+/* FORM STYLES  */
 .form-group {
     margin-bottom: 20px;
     display: flex;
@@ -203,7 +203,7 @@ body {
     margin-top: 5px;
 }
 
-/* ==================== DATE SELECTOR ==================== */
+/* DATE SELECTOR */
 .date-selector {
     margin-bottom: 20px;
 }
@@ -223,7 +223,7 @@ body {
     border-color: #667eea;
 }
 
-/* ==================== BUTTONS ==================== */
+/* BUTTONS */
 .btn {
     padding: 12px 24px;
     border: none;
@@ -273,7 +273,7 @@ body {
     transform: translateY(0);
 }
 
-/* ==================== ERROR MESSAGE ==================== */
+/* ERROR MESSAGE */
 .error-message {
     background: #fee;
     color: #c33;
@@ -284,7 +284,7 @@ body {
     font-size: 14px;
 }
 
-/* ==================== ITEMS LIST ==================== */
+/* ITEMS LIST  */
 .items-list {
     min-height: 60px;
 }
@@ -353,7 +353,7 @@ body {
     font-style: italic;
 }
 
-/* ==================== SURVEY PAGE ==================== */
+/*  SURVEY PAGE  */
 .survey-container {
     max-width: 500px;
     margin: 50px auto;
@@ -388,7 +388,7 @@ body {
     gap: 20px;
 }
 
-/* ==================== TWO COLUMN LAYOUT ==================== */
+/*TWO COLUMN LAYOUT  */
 .two-column {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -411,7 +411,7 @@ body {
     }
 }
 
-/* ==================== RESPONSIVE ==================== */
+/*  RESPONSIVE  */
 @media (max-width: 768px) {
     .navbar-container {
         flex-direction: column;
